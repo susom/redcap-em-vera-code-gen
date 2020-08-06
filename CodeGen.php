@@ -25,7 +25,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      * set all class vars
      * @return null
      */
-    public function prepVars($codeLen, $valid_chars = "234689ACDEFHJKMNPRTVWXY", $required_prefix = null) {
+    public function prepVars($codeLen = 7, $valid_chars = "234689ACDEFHJKMNPRTVWXY", $required_prefix = null) {
         $this->validChars       = $valid_chars;
 
         // The size of the valid chars array
@@ -44,7 +44,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         $this->reqPrefix        = $required_prefix;    
 
         // store generated codes into persistant store (mem wont handle too large a value, and will need to carry over to subsequent runs) to squash dupes
-		$this->uniqueCodes       = !empty($this->getProjectSetting("unique-codes")) ? json_decode($this->getProjectSetting("unique-codes"),1) : array();
+		$this->uniqueCodes       = $this->getAllUniqueCodes();
 		// $this->emDebug("onload", $this->uniqueCodes);
 	}
 
@@ -80,13 +80,33 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
 			$codes[] = $this->getCode();
 		}
 
-		// store all the new codes to project setting key store
-		$this->emDebug("what now", $codes);
-		$this->setProjectSetting("unique-codes", json_encode($this->uniqueCodes));
+		$this->storeAllUniqueCodes();
 		return $codes;
 	}
 
+    /**
+     * Get all  Unique Codes from REDCAP DB
+     * @return array
+     */
+	public function getAllUniqueCodes(){
+		// TODO CHANGE THIS TO GET FROM REDCAP TABLE "vera_direct_codes"
+        if( empty($this->getProjectSetting("unique-codes")) ){ 
+            return json_decode($this->getProjectSetting("unique-codes"),1);
+        }else{
+            return array();
+        }
+    }
 
+    /**
+     * Store Unique Codes in REDCAP DB
+     * @return null
+     */
+	public function storeAllUniqueCodes(){
+		// TODO CHANGE THIS TO STORE IN REDCAP TABLE "vera_direct_codes"
+        $this->setProjectSetting("unique-codes", json_encode($this->uniqueCodes));
+        return;
+    }
+    
     /**
      * Validate a code's format
      * @param $code

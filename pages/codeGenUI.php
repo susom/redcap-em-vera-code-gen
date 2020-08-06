@@ -8,10 +8,9 @@ if(!empty($_POST["action"])){
         case "genCodes":
             $n                  = $_POST["numcodes"];
             $validChars         = "234689ACDEFHJKMNPRTVWXY"; //23 characters are valid
-            $codeLen            = 8; //Length of code to be created
+            $codeLen            = 7; //Length of code to be created
             $required_prefix    = "V";
             $module->prepVars($codeLen, $validChars, $required_prefix);
-
             $result = $module->genCodes($n);
         break;
 
@@ -23,6 +22,8 @@ if(!empty($_POST["action"])){
     exit;
 }
 
+$loading    = $module->getUrl("pages/img/icon_loading.gif");
+$loaded     = $module->getUrl("pages/img/icon_loaded.png");
 require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
 ?>
 <style>
@@ -55,14 +56,37 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
         border-radius: .25rem;
         transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
     }
+
+    #codeCheck{
+        display: inline-block;
+        width: auto;
+        vertical-align: top;
+        margin-right:10px
+    }
+
+    .good input {
+        color:green;
+        font-weight:bold;
+    }
+    .bad input {
+        color:red;
+        font-weight:bold;
+    }
 </style>
 
 <div style='margin:20px 40px 0 0;'>
     <h4>Generate Unique Vera Codes:</h4>
     <textarea id="copyveras"><?= implode(", ",$codes) ?></textarea>
-    <p>
+    <p class="form-group">
         <label id="howmany"><b>How Many</b> <input type='number' id='numcodes' min='100' max='10000' step='100'/></label> <button id='generate' class="button btn btn-primary">Generate and Copy to Clipboard</button>
     </p>
+
+    <br><br>
+
+    <h4>Validate Code</h4>
+    <div class="form-group">
+        <input type="text" class="form-control" id="codeCheck" placeholder="e.g. VE4YPM7"> <button id="checkCode" class="button btn btn-info">Check Code Valid</button>
+    </div>
 </div>
 <script>
 $(document).ready(function(){
@@ -82,7 +106,6 @@ $(document).ready(function(){
             },
             dataType: "json"
         }).done(function (result) {
-            console.log(result);
             $("#copyveras").text(result.join(", "));
             $("#copyveras").trigger("click");
         }).fail(function () {
@@ -90,10 +113,16 @@ $(document).ready(function(){
         });
     });
 
-    // test validateCodeFormat function
-    var code        = "4689WXY5";
-    var checkDigit  = validateCodeFormat(code);
-    console.log(code, "is valid?", checkDigit);
+    $("#checkCode").click(function(){
+        $(this).parent().removeClass("good").removeClass("bad");
+        var code = $("#codeCheck").val();
+
+        if(validateCodeFormat(code)){
+            $(this).parent().addClass("good");
+        }else{
+            $(this).parent().addClass("bad");
+        }
+    });
 });
 function validateCodeFormat(code) {
     var validChars  = "234689ACDEFHJKMNPRTVWXY";
