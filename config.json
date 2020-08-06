@@ -1,9 +1,9 @@
 {
-	"name": "ClassNameHere",
+	"name": "Vera Code Gen",
 
-	"namespace": "Stanford\\ClassNameHere",
+	"namespace": "Stanford\\CodeGen",
 
-	"description": "A template for a REDCap External Module",
+	"description": "Generates Unique Codes for Vera Project",
 
 	"documentation": "README.md",
 
@@ -11,6 +11,11 @@
 		{
 			"name": "Andrew Martin",
 			"email": "andy123@stanford.edu",
+			"institution": "Stanford University"
+		},
+		{
+			"name": "Irvin Szeto",
+			"email": "irvins@stanford.edu",
 			"institution": "Stanford University"
 		}
 	],
@@ -21,11 +26,17 @@
 		"redcap_module_save_configuration"
 	],
 	
+	"framework-version": 4,
+	
 	"enable-every-page-hooks-on-system-pages": false,	
 
 	"links": {
 		"project": [
-
+			{
+				"name": "Vera Code Gen",
+				"icon": "gear",
+				"url": "pages/codeGenUI.php"
+			}
 		],
 		"control-center": [
 
