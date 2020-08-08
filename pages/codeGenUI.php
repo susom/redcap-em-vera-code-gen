@@ -1,17 +1,18 @@
 <?php
 namespace Stanford\CodeGen;
-/** @var \Stanford\ProjCaFacts\CodeGen $module */
+/** @var CodeGen $module */
 
 if(!empty($_POST["action"])){
     $action = $_POST["action"];
     switch($action){
         case "genCodes":
-            $n                  = $_POST["numcodes"];
+            $n                  = filter_var($_POST["numcodes"], FILTER_SANITIZE_NUMBER_INT);
             $validChars         = "234689ACDEFHJKMNPRTVWXY"; //23 characters are valid
-            $codeLen            = 7; //Length of code to be created
-            $required_prefix    = "V";
-            $module->prepVars($codeLen, $validChars, $required_prefix);
+            $codeLen            =  6; //Length of code to be created
+            $mask               = "VVVVV."; //@@###";
+            $module->prepVars($codeLen, $mask);
             $result = $module->genCodes($n);
+            $module->getSpace($codeLen, $mask);
         break;
 
         default:
@@ -36,12 +37,12 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
         vertical-align:top;
     }
     #howmany{
-        vertical-align:top: 
+        vertical-align:top:
     }
     #howmany b,
     #howmany input{
         display:inline-block;
-        margin-right:10px; 
+        margin-right:10px;
     }
     #howmany input{
         height: calc(1.5em + .75rem + 2px);
@@ -89,6 +90,7 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
     </div>
 </div>
 <script>
+
 $(document).ready(function(){
     $("#copyveras").click(function(){
         $(this).select();
@@ -129,7 +131,7 @@ function validateCodeFormat(code) {
     code            = code.toUpperCase().trim().split("").reverse(); //prep code for luhn algo UPPERCASe, TRIM , REVERSE
 
     // will match this with result of Luhn algo below, and remove from code array
-    var verifyDigit = code.shift(); 
+    var verifyDigit = code.shift();
     var checkSum    = 0;
 
     // make sure code portion consists of valid chars
