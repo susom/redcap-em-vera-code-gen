@@ -9,7 +9,7 @@ if(!empty($_POST["action"])){
             $n                  = filter_var($_POST["numcodes"], FILTER_SANITIZE_NUMBER_INT);
             $validChars         = "234689ACDEFHJKMNPRTVWXY"; //23 characters are valid
             $codeLen            =  6; //Length of code to be created
-            $mask               = "VVVVV."; //@@###";
+            $mask               = "....##";
             $module->prepVars($codeLen, $mask);
             $result = $module->genCodes($n);
             $module->getSpace($codeLen, $mask);

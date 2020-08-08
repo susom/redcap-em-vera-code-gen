@@ -100,15 +100,17 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      * @return array
      */
 	public function genCodes($n){
-		$codes = [];
+		// $codes = [];
 		for($i=0; $i < $n; $i++) {
 		    $code = $this->getCode();
-		    if ($code !== false) $codes[] = $code;
+		    // if ($code !== false) $codes[] = $code;
 		}
 
-		$this->storeAllUniqueCodes();
-		return $codes;
+		//$this->storeAllUniqueCodes();
+		//return $codes;
+	    return $this->uniqueCodes;
 	}
+
 
     /**
      * Get all  Unique Codes from REDCAP DB
@@ -205,12 +207,12 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
             }
             $checkSum   += $weight;
 
-            $this->emDebug( ( $i%2 ? "even" : "odd" ) . "$char => $weight");
+            //$this->emDebug( ( $i%2 ? "even" : "odd" ) . "$char => $weight");
         }
         $checkSum   = abs($checkSum) + 10; //handle sum < 10 if characters < 0 are allowed
         $checkDigit = floor((10 - ($checkSum%10)) % 10); //check digit is amount needed to reach next number divisible by ten
 
-        $this->emDebug("$checkSum % 10 = $checkDigit");
+        //$this->emDebug("$checkSum % 10 = $checkDigit");
 
         return $checkDigit; //this will return var type "double" so make sure to intval it before comparison
     }
@@ -249,7 +251,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      */
     public function getSpace($len, $mask) {
         $s = 1;
-        for ($i = 0; $i < $len; $i++) {
+        for ($i = 0; $i < $len - 1; $i++) {
             $type = substr($mask,$i,1);
             switch($type) {
                 case ".":
@@ -267,13 +269,11 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
             }
         }
 
-
-
-
         // Take off for the checksum and see the total space
-//        $size = pow($this->lenValidChars, $this->codeLength-1);
-//        return "A code of [$this->codeLength] characters including a check digit has space of " . number_format($size) . "<br>";
-        $this->emDebug("A code of [$len] characters with mask [$mask] without check digit has space of " . number_format($s));
+        //        $size = pow($this->lenValidChars, $this->codeLength-1);
+        //        return "A code of [$this->codeLength] characters including a check digit has space of " . number_format($size) . "<br>";
+        $this->emDebug("A code of [$len] characters (" . ( intval($len)-1 ) . ") without the check digit, and a mask [" .
+            $mask . "] has unique space of " . number_format($s));
     }
 
 
