@@ -25,10 +25,10 @@
 		"redcap_module_project_enable",
 		"redcap_module_save_configuration"
 	],
-	
+
 	"framework-version": 4,
-	
-	"enable-every-page-hooks-on-system-pages": false,	
+
+	"enable-every-page-hooks-on-system-pages": false,
 
 	"links": {
 		"project": [
@@ -36,7 +36,12 @@
 				"name": "Vera Code Gen",
 				"icon": "gear",
 				"url": "pages/codeGenUI.php"
-			}
+			},
+            {
+                "name": "Vera Code Gen2",
+                "icon": "gear",
+                "url": "pages/codeGenUI2.php"
+            }
 		],
 		"control-center": [
 
@@ -48,6 +53,24 @@
 	],
 
 	"project-settings": [
+        {
+            "key": "code-length",
+            "name": "<b>Length of Code</b><br/>Includes the check digit",
+            "required": true,
+            "type": "text"
+        },
+        {
+            "key": "mask",
+            "name": "<b>Mask Format</b><br/>@ (alpha), # (number), . (any), or you can hard-code a specific<br/>e.g. V..###",
+            "required": false,
+            "type": "text"
+        },
+        {
+            "key": "allowable-chars",
+            "name": "<b>Chars Allowed</b><br/>leave blank for standard 'safe' digits 234689ACDEFHJKMNPRTVWXY",
+            "required": false,
+            "type": "text"
+        },
 		{
 			"key": "enable-project-debug-logging",
 			"name": "<b>Enable Debug Logging</b><br><i>(optional)</i> Requires installation and configuration of emLogger",

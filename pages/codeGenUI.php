@@ -79,7 +79,8 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
     <h4>Generate Unique Vera Codes:</h4>
     <textarea id="copyveras"><?= implode(", ",$codes) ?></textarea>
     <p class="form-group">
-        <label id="howmany"><b>How Many</b> <input type='number' id='numcodes' min='100' max='10000' step='100'/></label> <button id='generate' class="button btn btn-primary">Generate and Copy to Clipboard</button>
+        <label id="howmany"><b>How Many</b> <input type='number' id='numcodes' min='100' max='10000' step='100'/></label>
+        <button id='generate' class="button btn btn-primary">Generate and Copy to Clipboard</button>
     </p>
 
     <br><br>
