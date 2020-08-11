@@ -8,13 +8,11 @@ if(!empty($_POST["action"])){
     switch($action){
         case "genCodes":
             $n                  = filter_var($_POST["numcodes"], FILTER_SANITIZE_NUMBER_INT);
-            $module->prepVars(); //$codeLen, $mask);
             $result = $module->genCodes($n);
         break;
 
         case "genDbCodes":
             $n                  = filter_var($_POST["numcodes"], FILTER_SANITIZE_NUMBER_INT);
-            $module->prepVars();
             $codes = $module->genCodes($n);
             if (count($codes) < $n) {
                 $module->emDebug("Asked for $n - got back " . count($codes) . "uniques!");
@@ -132,8 +130,8 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
         currentSize: 0,
         growing: false,
         duplicateCount: 0,
-        checkdigitMethod: <?php echo json_encode($module->checkdigitMethod); ?>,
-        allowableChars: <?php echo json_encode($module->validChars); ?>,
+        checksumMethod: <?php echo json_encode($module->getChecksumMethod()); ?>,
+        validChars: <?php echo json_encode($module->getValidChars()); ?>,
 
         validateCode: function(code) {
         }
@@ -292,9 +290,58 @@ $(document).ready(function(){
 });
 
 
-
 function validateCodeFormat(code) {
-    var validChars  = "234689ACDEFHJKMNPRTVWXY";
+    if (VCG.checksumMethod == 'lunh') {
+        return validateCodeFormatLunh(code);
+    }
+
+    if (VCG.checksumMethod == 'mod') {
+        return validateCodeFormatMod(code);
+    }
+
+    alert('invalid checksumMethod');
+    console.log(code,VCG);
+}
+
+
+function validateCodeFormatMod(code) {
+
+    function array_flip( trans ) {
+        var key, tmp_ar = {};
+        for ( key in trans ) {
+            if ( trans.hasOwnProperty( key ) ) {
+                tmp_ar[trans[key]] = key;
+            }
+        }
+        return tmp_ar;
+    }
+
+    // Prepare Valid Chars
+    var validChars = VCG.validChars.split("");
+
+    // Flip Chars
+    var validKeys = array_flip(validChars);
+
+    // Prepare Code
+    var arrChars = code.trim().split("");
+    var lastDigit = arrChars.pop();
+
+    // Calc Last Digit
+    var idxSum = 0;
+    for (i in arrChars) {
+        char = arrChars[i];
+        var k = parseInt(validKeys[char]);
+        idxSum = idxSum + k;
+    }
+    var mod = idxSum % validChars.length;
+    var checkDigit = validChars[mod];
+
+    return checkDigit == lastDigit;
+}
+
+
+function validateCodeFormatLunh(code) {
+    var validChars  = VCG.validChars;
     code            = code.toUpperCase().trim().split("").reverse(); //prep code for luhn algo UPPERCASe, TRIM , REVERSE
 
     // will match this with result of Luhn algo below, and remove from code array

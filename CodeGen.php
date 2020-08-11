@@ -44,6 +44,15 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         }
 	}
 
+	public function getChecksumMethod() {
+        return $this->checksumMethod;
+    }
+
+    public function getValidChars() {
+        return $this->validChars;
+    }
+
+
 	/**
      * set all class vars
      */
@@ -184,6 +193,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
 	    $summary['codeLength'] = $this->codeLength;
 	    $summary['validChars'] = $this->validChars;
         $summary['mask'] = $this->mask;
+        $summary['checksumMethod'] = $this->checksumMethod;
         $summary['space'] = $this->getSpace($this->codeLength, $this->mask);
 
   	    $q = $this->query('select code from vera_direct_codes order by id desc limit 5', []);
