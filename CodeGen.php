@@ -8,6 +8,12 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
     use emLoggerTrait;
 
     private $validChars;        // All valid characters
+    private $validNums;
+    private $validAlpha;
+
+    private $codeLength;
+
+
 	private $arrValidChars;
     private $lenValidChars;
     private $arrValidAlpha;
@@ -17,55 +23,86 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
 
     private $arrValidKeys;
 
-    private $codeLength;
     private $lastError;
-    private $prefix;
     private $mask;
+    private $checksumMethod;
     private $uniqueCodes;
-
-    const VALID_CHARS = "234689ACDEFHJKMNPRTVWXY";
-    const VALID_ALPHA =       "ACDEFHJKMNPRTVWXY";
-    const VALID_NUMS  = "234689";
-    const DEFAULT_CODE_LEN = 7;
-    const MAX_RECURSIVE_ITERATIONS = 10;    // Max number of unique collisions to happen before failing
-
     private $recursiveIterations = 0;
+
+    // These only apply if not specified in EM settings
+    const VALID_CHARS = "234689ACDEFHJKMNPRTVWXY";
+    // const VALID_ALPHA =       "ACDEFHJKMNPRTVWXY";
+    // const VALID_NUMS  = "234689";
+    const DEFAULT_CODE_LEN = 6;
+    const MAX_RECURSIVE_ITERATIONS = 10;    // Max number of unique collisions to happen before failing
 
     public function __construct() {
 		parent::__construct();
 		// Other code to run when object is instantiated
+        if ($this->getProjectId() > 0) {
+            $this->prepVars();
+        }
 	}
+
+	public function getChecksumMethod() {
+        return $this->checksumMethod;
+    }
+
+    public function getValidChars() {
+        return $this->validChars;
+    }
+
 
 	/**
      * set all class vars
      */
-    public function prepVars($codeLen = self::DEFAULT_CODE_LEN, $mask = "", $valid_chars = self::VALID_CHARS, $valid_alpha = self::VALID_ALPHA, $valid_nums = self::VALID_NUMS) {
-        // The length of the codes for this codeGen (this includes a checksum)
-        $this->codeLength       = $codeLen;
+    public function prepVars($codeLen = NULL, $mask = NULL, $valid_chars = NULL, $checksumMethod = NULL) {
 
-        // Valid global characters
-        $this->validChars       = $valid_chars;
+        // Get the valid characters
+        $this->validChars = $valid_chars;
+        if (empty($valid_chars)) {
+            $this->validChars = $this->getProjectSetting('allowable-chars');
+            if (empty($this->validChars)) $this->validChars = self::VALID_CHARS;
+        }
+        $this->arrValidChars    = str_split($this->validChars);
+
+        // Set the valid nums and alphas
+        $this->arrValidNums = [];
+        $this->arrValidAlpha = [];
+        foreach ($this->arrValidChars as $k => $i) {
+            if (is_numeric($i)) {
+                $this->arrValidNums[] = $i;
+            } else {
+                $this->arrValidAlpha[] = $i;
+            }
+        }
+
+        // Set the code length
+        $this->codeLength = $codeLen;
+        if (empty($this->codeLength)) $this->codeLength = $this->getProjectSetting('code-length');
+        if (empty($this->codeLength)) $this->codeLength = self::DEFAULT_CODE_LEN;
+
+        // mask using # for number, @ for alpha, . for any valid char, or the char it self
+        $this->mask             = $mask;  // e.g. (V###@@@ for V123ABC)
+        if (is_null($this->mask)) $this->mask = $this->getProjectSetting('mask');
+
+        // Get a checksum method
+        $this->checksumMethod = $checksumMethod;
+        if (is_null($this->checksumMethod)) $this->checksumMethod = $this->getProjectSetting('checksum-method');
+
 
         // Arrays of characters and their indexes
-        $this->lenValidChars    = strlen($valid_chars);
-        $this->arrValidChars    = str_split($valid_chars);
-
-        $this->lenValidAlpha    = strlen($valid_alpha);
-        $this->arrValidAlpha    = str_split($valid_alpha);
-
-        $this->lenValidNums     = strlen($valid_nums);
-        $this->arrValidNums     = str_split($valid_nums);
+        $this->lenValidChars    = count($this->arrValidChars);
+        $this->lenValidAlpha    = count($this->arrValidAlpha);
+        $this->lenValidNums     = count($this->arrValidNums);
 
         // A flipped array of valid chars leading to their index (with value min at 0)
         $this->arrValidKeys     = array_flip($this->arrValidChars);
 
-        // mask using # for number, @ for alpha, . for any valid char, or the char it self
-        $this->mask             = $mask;  // e.g. (V###@@@ for V123ABC)
-
         // store generated codes into a persistent store
         // (mem wont handle too large a value, and will need to carry over to subsequent runs) to squash dupes
-		$this->uniqueCodes       = $this->getAllUniqueCodes();
-
+		// $this->uniqueCodes       = $this->getAllUniqueCodes();
+        // $this->emDebug($this);
 	}
 
 
@@ -74,8 +111,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      * @return string
      */
     public function getCode() {
-        $mask       = $this->mask;
-        $codebody   = $this->getRandomSeq($this->codeLength - 1, $mask);
+        $codebody   = $this->getRandomSeq($this->codeLength - 1);
         $checkdig   = $this->calcCheckDigit($codebody);
         $returncode = $codebody.$checkdig;
 
@@ -95,45 +131,137 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         return $returncode;
     }
 
+
+    public function insertCodes($codes) {
+        // $q = $this->createQuery();
+        // $q->add("insert into vera_direct_codes (code) values ");
+        // foreach ($codes as $code) {
+        //     $q->add('(?)')
+        // }
+        try {
+            $arrVals = array_fill(0,count($codes),'(?)');
+            $sql = 'insert into vera_direct_codes (code) values ' . implode(',', $arrVals) . " ON DUPLICATE KEY UPDATE code=code;";
+            // $q = $this->framework->createQuery();
+            // $q->add($sql, $codes);
+            // $q->execute();
+            // $this->emDebug(count($arrVals), $sql, $q);
+            // return $q->affected_rows;
+            $q = $this->query($sql, $codes);
+            return true;
+
+        } catch (\Exception $e) {
+            $msg = $e->getMessage();
+            $this->emDebug($msg);
+            if (strpos($msg, "Duplicate")) {
+                // Catch duplicate errors
+                return false;
+            }
+            throw $e;
+        }
+    }
+
+
 	/**
      * Generate $n unique codes
      * @return array
      */
 	public function genCodes($n){
-		// $codes = [];
+		$codes = [];
 		for($i=0; $i < $n; $i++) {
 		    $code = $this->getCode();
-		    // if ($code !== false) $codes[] = $code;
+		    if ($code !== false) $codes[] = $code;
 		}
 
 		//$this->storeAllUniqueCodes();
-		//return $codes;
-	    return $this->uniqueCodes;
+		return $codes;
+	    // return $this->uniqueCodes;
 	}
 
 
     /**
-     * Get all  Unique Codes from REDCAP DB
+     * Get a summary of what is in the database right now
      * @return array
      */
-	public function getAllUniqueCodes(){
-		// TODO CHANGE THIS TO GET FROM REDCAP TABLE "vera_direct_codes"
-        if( empty($this->getProjectSetting("unique-codes")) ){
-            return json_decode($this->getProjectSetting("unique-codes"),1);
-        }else{
-            return array();
-        }
+	public function getDbSummary() {
+	    $this->prepVars();
+
+	    $summary = [];
+	    $q = $this->query('select count(*) from vera_direct_codes', []);
+	    $row = db_fetch_array($q);
+	    $summary['totalDbEntries'] = $row[0];
+
+	    $summary['codeLength'] = $this->codeLength;
+	    $summary['validChars'] = $this->validChars;
+        $summary['mask'] = $this->mask;
+        $summary['checksumMethod'] = $this->checksumMethod;
+        $summary['space'] = $this->getSpace($this->codeLength, $this->mask);
+
+  	    $q = $this->query('select code from vera_direct_codes order by id desc limit 5', []);
+  	    $examples = [];
+  	    while ($row = db_fetch_array($q) ) {
+  	        $examples[] = $row['code'];
+        };
+        $summary['examples'] = implode(", ", $examples);
+
+        return $summary;
     }
 
     /**
-     * Store Unique Codes in REDCAP DB
-     * @return null
+     * Wipe the database
      */
-	public function storeAllUniqueCodes(){
-		// TODO CHANGE THIS TO STORE IN REDCAP TABLE "vera_direct_codes"
-        $this->setProjectSetting("unique-codes", json_encode($this->uniqueCodes));
+    public function deleteDb() {
+	    $q = $this->query('TRUNCATE vera_direct_codes', []);
+	    $q = $this->query('alter TABLE vera_direct_codes AUTO_INCREMENT = 1', []);
         return;
+	}
+
+
+    /**
+     * Move from db table to project
+     */
+	public function addCodesToProject() {
+	    $id_field = \REDCap::getRecordIdField();
+        $q = $this->query('select record from redcap_data where project_id = ?',[
+            $this->getProjectId()
+        ]);
+        $max = 1;
+        while ($row=db_fetch_row($q)) {
+            $max = max($max, $row[0]);
+        }
+        $start = $max;
+        $this->emDebug("starting add at $start");
+
+        $q = $this->query('select * from vera_direct_codes',[]);
+
+        $data = [];
+        $i = 0;
+        while ($row = db_fetch_assoc($q)) {
+            $max++;
+            $data[] = [
+                'id' => $max,
+                'code' => $row['code']
+            ];
+            $i++;
+
+            if ($i === 1000) {
+                // Save
+                $result = \REDCap::saveData('json', json_encode($data));
+                //$this->emDebug($result);
+                $i = 0;
+                $data = [];
+            }
+        }
+
+        if ($i > 0) {
+            // Save
+            $this->emDebug('final Save');
+            $result = \REDCap::saveData('json', json_encode($data));
+            $this->emDebug($result);
+        }
+
+        return $max-$start;
     }
+
 
     /**
      * Validate a code's format
@@ -141,7 +269,29 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      * @return bool
      */
     public function validateCodeFormat($code) {
-        $numDigits      = strlen($code);
+        switch ($this->checksumMethod) {
+            case "lunh":
+                $result = $this->validateCodeFormatLuhn($code);
+                break;
+            case "mod":
+                $result = $this->validateCodeFormatMod($code);
+                break;
+            default:
+                $this->emError("Invalid validateCodeFormat method: " . $this->checksumMethod);
+                $result = false;
+        }
+        return $result;
+
+    }
+
+    /**
+     * Validate a code's format using mod
+     * @param $code
+     * @return bool
+     */
+    public function validateCodeFormatMod($code)
+    {
+        $numDigits = strlen($code);
 
         // Verify length
         if ($numDigits !== $this->codeLength) {
@@ -149,10 +299,9 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
             return false;
         }
 
-        // Verify all characters are valid EXCEPT THE CHECKDIGIT
-        $arrChars       = str_split($code);
-        array_pop($arrChars);
-        $invalidChars   = array_diff($arrChars, $this->arrValidChars);
+        // Verify all characters are valid
+        $arrChars = str_split($code);
+        $invalidChars = array_diff($arrChars, $this->arrValidChars);
         if (!empty($invalidChars)) {
             $this->lastError = "Code contains invalid characters: " . implode(",",$invalidChars);
             return false;
@@ -161,9 +310,9 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         // Break off the checksum digit
         list($payload, $checkDigit) = str_split($code, $numDigits - 1);
 
-        // Check Digit should = mod of result of algo
+        // Get checksum from pre-code
         $actualCheckDigit = $this->calcCheckDigit($payload);
-        if (intval($actualCheckDigit) !== intval($checkDigit)) {
+        if ($actualCheckDigit !== $checkDigit) {
             $this->lastError = "Invalid CheckDigit for $code = $payload + $actualCheckDigit";
             return false;
         }
@@ -171,13 +320,70 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         return true;
     }
 
+
     /**
-     * Calculate a checksum based on this method:
+     * Validate code format using luhn
+     * @param $code
+     * @return bool
+     */
+    public function validateCodeFormatLuhn($code) {
+        $numDigits      = strlen($code);
+
+        // Verify length
+        if ($numDigits !== $this->codeLength) {
+            $this->lastError = "Invalid Code Length";
+            return false;
+        }
+
+        // Break off the checksum digit
+        list($payload, $checkDigit) = str_split($code, $numDigits - 1);
+
+        // Verify all characters are valid EXCEPT THE CHECKDIGIT
+        $arrChars     = str_split($payload);
+        $invalidChars = array_diff($arrChars, $this->arrValidChars);
+        if (!empty($invalidChars)) {
+            $this->lastError = "Code contains invalid characters: " . implode(",",$invalidChars);
+            return false;
+        }
+
+        // Check Digit should = mod of result of algo
+        $actualCheckDigit = $this->calcCheckDigit($payload);
+        if ( !is_numeric($checkDigit) || (intval($actualCheckDigit) !== intval($checkDigit))) {
+            $this->lastError = "Invalid CheckDigit for $code = $payload + $actualCheckDigit";
+            return false;
+        }
+
+        return true;
+    }
+
+
+    /**
+     * @param        $payload
+     * @param string $method  luhn or mod
+     */
+    private function calcCheckDigit($payload) {
+        switch ($this->checksumMethod) {
+            case "lunh":
+                $result = $this->calcCheckDigitLuhn($payload);
+                break;
+            case "mod":
+                $result = $this->calcCheckDigitMod($payload);
+                break;
+            default:
+                $this->emError("Invalid calcCheckDigit method: " . $this->checksumMethod);
+                $result = false;
+        }
+        return $result;
+    }
+
+
+    /**
+     * Calculate a checksum based on this Luhn method:
      * https://wiki.openmrs.org/display/docs/Check+Digit+Algorithm
      * @param $payload
      * @return string
      */
-    private function calcCheckDigit($payload) {
+    private function calcCheckDigitLuhn($payload) {
         // Convert each character to base x and sum.
         $arrChars       = str_split($payload);
 
@@ -217,33 +423,64 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         return $checkDigit; //this will return var type "double" so make sure to intval it before comparison
     }
 
+
+    /**
+     * Calculate a checksum based on this modulus method:
+     * @param $payload
+     * @return string
+     */
+    private function calcCheckDigitMod($payload) {
+        // Convert each character to base x and sum.
+        $arrChars = str_split($payload);
+
+        // Verify all characters are valid
+        $invalidChars = array_diff($arrChars, $this->arrValidChars);
+        if (!empty($invalidChars)) {
+            $this->lastError = "Code contains invalid characters: " . implode(",",$invalidChars);
+            return false;
+        }
+
+        $idxSum = 0;
+        foreach ($arrChars as $i => $char) {
+            $idxSum   = $idxSum + $this->arrValidKeys[$char];
+            //$this->emDebug($i . " -- $char => " . $this->arrValidKeys[$char] . " [" . $idxSum . "]");
+        }
+        $mod = $idxSum % $this->lenValidChars;
+        $checkDigit = $this->arrValidChars[$mod];
+
+        //$this->emDebug("$idxSum mod {$this->lenValidChars} = $mod which corresponds to $checkDigit");
+        return $checkDigit;
+    }
+
+
     /**
      * Generate a random code of length specified
      * @param $len
      * @return string
      */
-    private function getRandomSeq($len, $mask = "") {
+    private function getRandomSeq($len) {
         $r = [];
         for ($i = 0; $i < $len; $i++) {
-            $type = substr($mask,$i,1);
+            $type = substr($this->mask,$i,1);
             switch($type) {
                 case ".":
                 case false:
                     $r[] = $this->arrValidChars[rand(0, $this->lenValidChars - 1)];
                     break;
                 case "@":
-                    $r[] = self::VALID_ALPHA[rand(0, strlen(self::VALID_ALPHA) - 1)];
+                    $r[] = $this->arrValidAlpha[rand(0, $this->lenValidAlpha - 1)];
                     break;
                 case "#":
-                    $r[] = self::VALID_NUMS[rand(0, strlen(self::VALID_NUMS) - 1)];
+                    $r[] = $this->arrValidNums[rand(0, $this->lenValidNums - 1)];
                     break;
                 default:
                     $r[] = $type;
             }
-//            $r[] = $this->arrValidChars[rand(0, $this->lenValidChars - 1)];
+           // $r[] = $this->arrValidChars[rand(0, $this->lenValidChars - 1)];
         }
         return implode("", $r);
     }
+
 
     /**
      * Return the number of codes available in this space
@@ -270,13 +507,9 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         }
 
         // Take off for the checksum and see the total space
-        //        $size = pow($this->lenValidChars, $this->codeLength-1);
-        //        return "A code of [$this->codeLength] characters including a check digit has space of " . number_format($size) . "<br>";
-        $this->emDebug("A code of [$len] characters (" . ( intval($len)-1 ) . ") without the check digit, and a mask [" .
-            $mask . "] has unique space of " . number_format($s));
+        // $this->emDebug("A code of [$len] characters (" . ( intval($len)-1 ) . ") without the check digit, and a mask [" .
+        //     $mask . "] has unique space of " . number_format($s));
+        return $s;
     }
-
-
-
 
 }
