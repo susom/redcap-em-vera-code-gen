@@ -8,9 +8,6 @@ if(!empty($_POST["action"])){
     switch($action){
         case "genCodes":
             $n                  = filter_var($_POST["numcodes"], FILTER_SANITIZE_NUMBER_INT);
-            // $validChars         = "234689ACDEFHJKMNPRTVWXY"; //23 characters are valid
-            // $codeLen            =  6; //Length of code to be created
-            // $mask               = "....##";
             $module->prepVars(); //$codeLen, $mask);
             $result = $module->genCodes($n);
         break;
@@ -24,7 +21,7 @@ if(!empty($_POST["action"])){
             }
 
             $insert = $module->insertCodes($codes);
-            $module->emDebug("Insert Results", $insert);
+            // $module->emDebug("Insert Results", $insert);
 
             $result = $insert;
         break;
@@ -32,6 +29,15 @@ if(!empty($_POST["action"])){
         case "getSummary":
             $result = $module->getDbSummary();
         break;
+
+        case "deleteDb":
+            $result = $module->deleteDb();
+        break;
+
+                case "addToProject":
+            $result = $module->addCodesToProject();
+        break;
+
 
         default:
         break;
@@ -109,27 +115,28 @@ require_once APP_PATH_DOCROOT . 'ProjectGeneral/header.php';
             <button id='stopGrowDb' class="button btn btn-primary">Stop</button>
         </p>
     </div>
-
-<!--    <h4>Generate Unique Vera Codes:</h4>-->
-<!--    <textarea id="copyveras"></textarea>-->
-<!--    <p class="form-group">-->
-<!--        <label id="howmany"><b>How Many</b> <input type='number' id='numcodes' min='100' max='10000' step='100'/></label>-->
-<!--        <button id='generate' class="button btn btn-primary">Generate and Copy to Clipboard</button>-->
-<!--    </p>-->
-
     <br><br>
+    <div class="form-group">
+        <button id="deleteDb" class="button btn btn-danger">Delete the Database</button>
+        <button id="addToProject" class="button btn btn-success">Copy DB to Project</button>
+    </div>
 
     <h4>Validate Code</h4>
     <div class="form-group">
         <input type="text" class="form-control" id="codeCheck" placeholder="e.g. VE4YPM7"> <button id="checkCode" class="button btn btn-info">Check Code Valid</button>
     </div>
 </div>
-<script>
+<script type="text/javascript">
 
     VCG = {
         currentSize: 0,
         growing: false,
-        duplicateCount: 0
+        duplicateCount: 0,
+        checkdigitMethod: <?php echo json_encode($module->checkdigitMethod); ?>,
+        allowableChars: <?php echo json_encode($module->validChars); ?>,
+
+        validateCode: function(code) {
+        }
     };
 
 
@@ -138,6 +145,41 @@ $(document).ready(function(){
         $(this).select();
         document.execCommand('copy');
     });
+
+    $('#deleteDb').click(function() {
+        console.log('Deleting DB');
+        $.ajax({
+            method: 'POST',
+            data: {
+                "action"    : "deleteDb"
+            },
+            dataType: "json"
+        }).done(function (result) {
+            $("#updateSummary").trigger('click');
+        }).fail(function () {
+            console.log("something failed");
+        });
+
+    });
+
+    $('#addToProject').click(function() {
+        console.log('Adding DB To Project');
+        $.ajax({
+            method: 'POST',
+            data: {
+                "action"    : "addToProject"
+            },
+            dataType: "json"
+        }).done(function (result) {
+            console.log('added to project', result);
+            $("#summarySummary").trigger('click');
+            alert(result + ' records Added to Project');
+        }).fail(function () {
+            console.log("something failed");
+        });
+
+    });
+
 
     $('#updateSummary').click(function() {
         console.log('Updating summary');

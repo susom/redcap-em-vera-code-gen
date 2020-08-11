@@ -71,6 +71,22 @@
             "required": false,
             "type": "text"
         },
+        {
+            "key": "checksum-method",
+            "name": "<b>Checksum Method</b>",
+            "required": true,
+            "type": "radio",
+            "choices":[
+                {
+                  "name" : "Luhn (0-9)",
+                  "value" : "luhn"
+                },
+                {
+                  "name" : "Modulus",
+                  "value" : "mod"
+                }
+            ]
+        },
 		{
 			"key": "enable-project-debug-logging",
 			"name": "<b>Enable Debug Logging</b><br><i>(optional)</i> Requires installation and configuration of emLogger",
