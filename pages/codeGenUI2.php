@@ -304,8 +304,10 @@ function validateCodeFormat(code) {
 }
 
 
+// Assumes that code only contains valid characters
 function validateCodeFormatMod(code) {
 
+    // Flip an array so key is value - assumes array is unique
     function array_flip( trans ) {
         var key, tmp_ar = {};
         for ( key in trans ) {
@@ -317,6 +319,7 @@ function validateCodeFormatMod(code) {
     }
 
     // Prepare Valid Chars
+    // validChars is a string such as "234689ACDEFHJKMNPRTVWXY"
     var validChars = VCG.validChars.split("");
 
     // Flip Chars
@@ -324,16 +327,24 @@ function validateCodeFormatMod(code) {
 
     // Prepare Code
     var arrChars = code.trim().split("");
+
+    // Remove checkDigit
     var lastDigit = arrChars.pop();
 
-    // Calc Last Digit
+    // Calc CheckDigit using mod
     var idxSum = 0;
     for (i in arrChars) {
         char = arrChars[i];
         var k = parseInt(validKeys[char]);
-        idxSum = idxSum + k;
+        if (isNaN(k)) {
+            console.log('invalid character in code: ' + char + ' -- ignoring it for checksum');
+        } else {
+            idxSum = idxSum + k;
+        }
     }
     var mod = idxSum % validChars.length;
+
+    // Convert mod index to actual character (e.g. 6 becomes A)
     var checkDigit = validChars[mod];
 
     return checkDigit == lastDigit;

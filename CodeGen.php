@@ -127,7 +127,6 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
             $this->recursiveIterations = 0;
 			array_push($this->uniqueCodes, $returncode);
         }
-
         return $returncode;
     }
 
@@ -218,18 +217,23 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
 
     /**
      * Move from db table to project
+     * Currently it ADDs to the existing records
      */
 	public function addCodesToProject() {
+
 	    $id_field = \REDCap::getRecordIdField();
-        $q = $this->query('select record from redcap_data where project_id = ?',[
+
+	    // For auto-id
+	    $q = $this->query('select record from redcap_data where project_id = ?',[
             $this->getProjectId()
         ]);
-        $max = 1;
+        $max = 0;
         while ($row=db_fetch_row($q)) {
             $max = max($max, $row[0]);
         }
         $start = $max;
         $this->emDebug("starting add at $start");
+
 
         $q = $this->query('select * from vera_direct_codes',[]);
 
@@ -238,7 +242,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         while ($row = db_fetch_assoc($q)) {
             $max++;
             $data[] = [
-                'id' => $max,
+                $id_field => $max,
                 'code' => $row['code']
             ];
             $i++;
@@ -270,7 +274,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      */
     public function validateCodeFormat($code) {
         switch ($this->checksumMethod) {
-            case "lunh":
+            case "luhn":
                 $result = $this->validateCodeFormatLuhn($code);
                 break;
             case "mod":
@@ -363,7 +367,7 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
      */
     private function calcCheckDigit($payload) {
         switch ($this->checksumMethod) {
-            case "lunh":
+            case "luhn":
                 $result = $this->calcCheckDigitLuhn($payload);
                 break;
             case "mod":
@@ -434,15 +438,19 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
         $arrChars = str_split($payload);
 
         // Verify all characters are valid
-        $invalidChars = array_diff($arrChars, $this->arrValidChars);
-        if (!empty($invalidChars)) {
-            $this->lastError = "Code contains invalid characters: " . implode(",",$invalidChars);
-            return false;
-        }
+        // $invalidChars = array_diff($arrChars, $this->arrValidChars);
+        // if (!empty($invalidChars)) {
+        //     $this->lastError = "Code contains invalid characters: " . implode(",",$invalidChars);
+        //     return false;
+        // }
 
         $idxSum = 0;
         foreach ($arrChars as $i => $char) {
-            $idxSum   = $idxSum + $this->arrValidKeys[$char];
+            if(isset($this->arrValidKeys[$char])) {
+                $idxSum   = $idxSum + $this->arrValidKeys[$char];
+            } else {
+                // character is not valid - we will ignore it for checksum purposes
+            }
             //$this->emDebug($i . " -- $char => " . $this->arrValidKeys[$char] . " [" . $idxSum . "]");
         }
         $mod = $idxSum % $this->lenValidChars;
