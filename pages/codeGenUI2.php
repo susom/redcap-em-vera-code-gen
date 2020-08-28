@@ -291,11 +291,13 @@ $(document).ready(function(){
 
 
 function validateCodeFormat(code) {
-    if (VCG.checksumMethod == 'lunh') {
+    //console.log (code, VCG.checksumMethod);
+
+    if (VCG.checksumMethod === 'luhn') {
         return validateCodeFormatLunh(code);
     }
 
-    if (VCG.checksumMethod == 'mod') {
+    if (VCG.checksumMethod === 'mod') {
         return validateCodeFormatMod(code);
     }
 
