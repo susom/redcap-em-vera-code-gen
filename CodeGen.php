@@ -224,7 +224,10 @@ class CodeGen extends \ExternalModules\AbstractExternalModule {
 	    $id_field = \REDCap::getRecordIdField();
 
 	    // For auto-id
-	    $q = $this->query('select record from redcap_data where project_id = ?',[
+        $data_table = method_exists('\REDCap', 'getDataTable') ? \REDCap::getDataTable($this->getProjectId()) : "redcap_data";
+
+	    $q = $this->query('select record from ? where project_id = ?',[
+            $data_table,
             $this->getProjectId()
         ]);
         $max = 0;
